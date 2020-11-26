@@ -4,31 +4,14 @@ const tds = document.querySelectorAll("td");
 const table = document.querySelector("table");
 const body = document.querySelector(".films");
 
-let allCell = [];
+let cell = [];
 class Products {
   async getProducts() {
     try {
       let result = await fetch("data.json");
       let data = await result.json();
-
-      let thead = data.thead;
-      thead = thead.map((thead) => {
-        const type = thead.type;
-        const htitle = thead.title;
-        const width = thead.width;
-        const lists = thead.lists;
-        return { type, htitle, width, lists };
-      });
-
-      let tbody = data.tbody;
-      tbody = tbody.map((tbody) => {
-        const id = tbody.id;
-        const title = tbody.title;
-        const year = tbody.year;
-        const country = tbody.country;
-        const watch = tbody.width;
-        return { id, title, year, country, watch };
-      });
+      let thead = data[0];
+      let tbody = data[1];
       return { thead, tbody };
     } catch (error) {
       console.log(error);
@@ -41,44 +24,59 @@ class UI {
     let thead = products.thead;
     let tbody = products.tbody;
     //шапка
-    let result = "";
-    thead.forEach((tname) => {
-      result += ` <th class="${tname.type}"> ${tname.htitle}</th>
-                `;
-      tr.innerHTML = result;
-    });
-    //таблица
-    let resultBody = "";
-    tbody.forEach((tlist) => {
+
+    let elem = document.querySelector("tr");
+    let rows = thead.length;
+    for (var i = 0; i < rows; i++) {
+      var th = document.createElement("th");
+      //   th.id = `thead${Thead[1]}`;
+      th.innerHTML = `${thead[i][1]}`;
+      elem.appendChild(th);
+    }
+
+    for (let i = 0; i < tbody.length; i++) {
       let row = document.createElement("tr");
-      resultBody += row.innerHTML = `
-        <td class=${thead[0].type} id="${tlist.id}">${tlist.id}</td> 
-        <td class=${thead[1].type} id="${tlist.id}" >${tlist.title}</td>
-        <td class=${thead[2].type} id="${tlist.id}">${tlist.year}</td>
-        <td class=${thead[3].type}>
-        <select class="Country" > </select> </td>
-        <td>  
-        <input type="checkbox" id=${tlist.id}”> </td>
-        `;
+      for (let j = 0; j < thead.length; j++) {
+        let col = document.createElement("td");
+        col.className = `${thead[j][0]}`;
+        if (thead[j][0] == "watch") {
+          let input = document.createElement("input");
+          input.type = "checkbox";
+          input.className = "checkbox";
+          input.id = `${tbody[i][0]}`;
+          input.checked = tbody[i][4];
+          col.appendChild(input);
+        }
+        else if(thead[j][0] == "toggle"){
+          let list = document.createElement("select");
+          list.className = "country";
+          col.appendChild(list);
+        }
+        else{
+          col.innerHTML = tbody[i][j];
+        }
+       
+        row.appendChild(col);
+      }
       document.querySelector(".films").appendChild(row);
-    });
+    }
+
     //выпадающий список
-    const sel = document.querySelectorAll(".Country");
+    const sel = document.querySelectorAll(".country");
     for (let i = 0; i < sel.length; i++) {
-      sel[i].innerHTML = thead[3].lists
+      sel[i].innerHTML = thead[3][3]
         .map((n) => `<option value=${n}>${n}</option>`)
         .join("");
     }
-    const select = document.querySelectorAll(".Country");
+    const select = document.querySelectorAll(".country");
 
     for (let i = 0; i < select.length; i++) {
       for (let j = 0; j < 3; j++) {
-        if (select[i].options[j].value == tbody[i].country)
+        if (select[i].options[j].value == tbody[i][3])
           select[i].options[j].selected = true;
       }
     }
-
-    // редактирование
+ 
 
     //измениение ширины
     let x = document.querySelectorAll("th");
@@ -159,9 +157,12 @@ class UI {
   enterEvent() {
     const tds = document.querySelector("tbody");
     let editingTd;
+    let id;
+    let value;
+
     tds.onclick = function (event) {
       let target = event.target.closest(
-        ".edit-cancel ,.edit-ok, .text,.numeric"
+        ".edit-cancel ,.edit-ok, .text,.numeric, .checkbox"
       );
       if (!tds.contains(target)) return;
 
@@ -169,9 +170,15 @@ class UI {
         finishTdEdit(editingTd.elem, false);
       } else if (target.className == "edit-ok") {
         finishTdEdit(editingTd.elem, true);
-      }
-      else if (target.nodeName == "TD") {
-        if (editingTd) return; 
+      } else if (target.className == "checkbox") {
+    
+        let stringItem = { ...Storage.getString(target.id)};
+     
+        cell = [...cell, stringItem];
+ 
+        Storage.saveCell(cell);
+      } else if (target.nodeName == "TD") {
+        if (editingTd) return;
 
         makeTdEditable(target);
       }
@@ -197,9 +204,12 @@ class UI {
         );
       }
     };
+    function finishCheckEdit(id, isOk) {}
+
     function finishTdEdit(td, isOk) {
       if (isOk) {
         td.innerHTML = td.firstChild.value;
+      
       } else {
         td.innerHTML = editingTd.data;
       }
@@ -208,8 +218,6 @@ class UI {
     }
 
     function validateForm() {
-     
-
       if (!/^[0-9]+$/.test(z)) {
         z.insertAdjacentHTML(
           "afterend",
@@ -222,11 +230,16 @@ class UI {
 
 class Storage {
   static saveEdit(products) {
-    localStorage.setItem(products, JSON.stringify(products));
+    localStorage.setItem(products, JSON.stringify(products.tbody));
   }
-  static getString(id) {
+  static getString(id, isOK) {
     let list = JSON.parse(localStorage.getItem("[object Object]"));
-    return list.tbody.find((products) => products.id == id);
+
+    return list.find((tbody) => tbody[0] == id);
+  }
+  static saveCell(cell) {
+    localStorage.setItem("cell", JSON.stringify(cell));
+    console.log(cell);
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
