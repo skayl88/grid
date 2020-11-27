@@ -21,8 +21,17 @@ class Products {
 
 class UI {
   displayProducts(products) {
+    if (localStorage.getItem("tbody") == null) {
+      localStorage.setItem("tbody", JSON.stringify(products.tbody));
+    }
+    let tbody = JSON.parse(localStorage.getItem("tbody"));
+
+    let wbody = products.tbody;
+
+    let result = "";
     let thead = products.thead;
-    let tbody = products.tbody;
+    let Ebody = products.tbody;
+
     //шапка
 
     let elem = document.querySelector("tr");
@@ -39,28 +48,33 @@ class UI {
       for (let j = 0; j < thead.length; j++) {
         let col = document.createElement("td");
         col.className = `${thead[j][0]}`;
+        col.id = `${tbody[i][0]}`;
         if (thead[j][0] == "watch") {
-          let input = document.createElement("input");
-          input.type = "checkbox";
-          input.className = "checkbox";
-          input.id = `${tbody[i][0]}`;
-          input.checked = tbody[i][4];
-          col.appendChild(input);
-        }
-        else if(thead[j][0] == "toggle"){
-          let list = document.createElement("select");
-          list.className = "country";
-          col.appendChild(list);
-        }
-        else{
+          createCheck(col, i);
+        } else if (thead[j][0] == "toggle") {
+          createList(col);
+        } else {
           col.innerHTML = tbody[i][j];
         }
-       
         row.appendChild(col);
       }
       document.querySelector(".films").appendChild(row);
     }
 
+    function createCheck(col, i) {
+      let input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "checkbox";
+      input.id = `${tbody[i][0]}`;
+      input.checked = tbody[i][4];
+      col.appendChild(input);
+    }
+
+    function createList(col, i) {
+      let list = document.createElement("select");
+      list.className = "country";
+      col.appendChild(list);
+    }
     //выпадающий список
     const sel = document.querySelectorAll(".country");
     for (let i = 0; i < sel.length; i++) {
@@ -76,7 +90,6 @@ class UI {
           select[i].options[j].selected = true;
       }
     }
- 
 
     //измениение ширины
     let x = document.querySelectorAll("th");
@@ -145,7 +158,6 @@ class UI {
       const max = columnTypeToRatioMap[header.dataset.type] + "fr";
       columns.push({
         header,
-
         size: `minmax(${min}px, ${max})`,
       });
 
@@ -157,9 +169,6 @@ class UI {
   enterEvent() {
     const tds = document.querySelector("tbody");
     let editingTd;
-    let id;
-    let value;
-
     tds.onclick = function (event) {
       let target = event.target.closest(
         ".edit-cancel ,.edit-ok, .text,.numeric, .checkbox"
@@ -169,14 +178,10 @@ class UI {
       if (target.className == "edit-cancel") {
         finishTdEdit(editingTd.elem, false);
       } else if (target.className == "edit-ok") {
-        finishTdEdit(editingTd.elem, true);
+        finishTdEdit(editingTd.elem, true, editingTd.type);
       } else if (target.className == "checkbox") {
-    
-        let stringItem = { ...Storage.getString(target.id)};
-     
-        cell = [...cell, stringItem];
- 
-        Storage.saveCell(cell);
+        Storage.saveCheck(target.id, target.checked);
+      } else if (target.className == "toggle") {
       } else if (target.nodeName == "TD") {
         if (editingTd) return;
 
@@ -187,6 +192,7 @@ class UI {
         editingTd = {
           elem: td,
           data: td.innerHTML,
+          type: td.className,
         };
 
         td.classList.add("edit-td");
@@ -204,25 +210,24 @@ class UI {
         );
       }
     };
-    function finishCheckEdit(id, isOk) {}
 
-    function finishTdEdit(td, isOk) {
+    function finishTdEdit(td, isOk, type) {
       if (isOk) {
-        td.innerHTML = td.firstChild.value;
-      
+        if (type == "numeric") {
+          validateForm(td.firstChild.value);
+        }
+        td.textContent = td.firstChild.value;
+        Storage.saveText(td.textContent, td.id);
       } else {
-        td.innerHTML = editingTd.data;
+        td.textContent = editingTd.data;
       }
       td.classList.remove("edit-td");
       editingTd = null;
     }
 
-    function validateForm() {
+    function validateForm(z) {
       if (!/^[0-9]+$/.test(z)) {
-        z.insertAdjacentHTML(
-          "afterend",
-          '<p class="error-message">Введите цифры </p>'
-        );
+        alert("Только цифры");
       }
     }
   }
@@ -230,16 +235,22 @@ class UI {
 
 class Storage {
   static saveEdit(products) {
-    localStorage.setItem(products, JSON.stringify(products.tbody));
+    if (localStorage.getItem("tbody") == null) {
+      console.log("da");
+    }
+    console.log("net");
   }
-  static getString(id, isOK) {
-    let list = JSON.parse(localStorage.getItem("[object Object]"));
-
-    return list.find((tbody) => tbody[0] == id);
+  static saveCheck(id, isOk) {
+    let list = JSON.parse(localStorage.getItem("tbody"));
+    let idCell = list.find((tbody) => tbody[0] == id);
+    idCell[4] = isOk;
+    localStorage.setItem("tbody", JSON.stringify(list));
   }
-  static saveCell(cell) {
-    localStorage.setItem("cell", JSON.stringify(cell));
-    console.log(cell);
+  static saveText(text, id) {
+    let list = JSON.parse(localStorage.getItem("tbody"));
+    let idCell = list.find((tbody) => tbody[0] == id);
+    idCell[1] = text;
+    localStorage.setItem("tbody", JSON.stringify(list));
   }
 }
 document.addEventListener("DOMContentLoaded", () => {
@@ -247,6 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const products = new Products();
 
   products
+
     .getProducts()
     .then((products) => {
       ui.displayProducts(products);
