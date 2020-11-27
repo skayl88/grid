@@ -227,7 +227,9 @@ class UI {
 
     function validateForm(z) {
       if (!/^[0-9]+$/.test(z)) {
+   
         alert("Только цифры");
+        makeTdEditable()
       }
     }
   }
